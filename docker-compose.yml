@@ -1,0 +1,38 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  li-extractor:
+    build: .
+    volumes:
+      - ./out:/app/out
+      - ./config:/app/config:ro
+    environment:
+      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/juansebastianmd/}
+      - MIN_POSTS=${MIN_POSTS:-10}
+      - MAX_SECONDS=${MAX_SECONDS:-60}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: >
+      python -m li_extractor.cli
+      --profile-url "${PROFILE_URL}"
+      --min-posts ${MIN_POSTS}
+      --max-seconds ${MAX_SECONDS}
+      --headless
+    profiles:
+      - production
+
+  li-extractor-dev:
+    build: .
+    volumes:
+      - .:/app
+      - /app/src/li_extractor/__pycache__
+    environment:
+      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/juansebastianmd/}
+    ports:
+      - "9222:9222"  # Chrome DevTools
+    command: >
+      python -m li_extractor.cli
+      --profile-url "${PROFILE_URL}"
+      --headful
+    profiles:
+      - development

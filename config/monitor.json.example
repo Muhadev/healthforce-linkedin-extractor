@@ -1,0 +1,23 @@
+# config/monitor.json.example
+{
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "use_tls": true,
+    "from_email": "alerts@yourcompany.com",
+    "username": "alerts@yourcompany.com",
+    "password": "your-app-password"
+  },
+  "alerts": {
+    "to_emails": [
+      "devops@yourcompany.com",
+      "data-team@yourcompany.com"
+    ],
+    "severity_levels": ["warning", "critical"]
+  },
+  "thresholds": {
+    "max_age_hours": 24,
+    "min_posts_expected": 5,
+    "max_error_rate": 0.1
+  }
+}
