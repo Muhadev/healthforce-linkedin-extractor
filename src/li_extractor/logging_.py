@@ -77,10 +77,11 @@ class StructuredLogger:
         event_code: str | None = None,
         metrics: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
+        exc_info: bool = False,
         **kwargs: Any,
     ) -> None:
         """Log with structured extras."""
-        extra = {}
+        extra: dict[str, Any] = {}
         if event_code:
             extra["event_code"] = event_code
         if metrics:
@@ -88,7 +89,9 @@ class StructuredLogger:
         if context:
             extra["context"] = context
 
-        getattr(self.logger, level.lower())(message, extra=extra, **kwargs)
+        getattr(self.logger, level.lower())(
+            message, extra=extra, exc_info=exc_info, **kwargs
+        )
 
     def info(
         self,
@@ -106,9 +109,12 @@ class StructuredLogger:
         event_code: str | None = None,
         metrics: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
+        exc_info: bool = False,
     ) -> None:
         """Log warning message."""
-        self._log_with_extras("WARNING", message, event_code, metrics, context)
+        self._log_with_extras(
+            "WARNING", message, event_code, metrics, context, exc_info=exc_info
+        )
 
     def error(
         self,

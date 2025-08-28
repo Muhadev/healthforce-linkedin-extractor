@@ -153,14 +153,14 @@ async def run_extraction(
             if not post_elements:
                 logger.warning("No posts found")
                 # Still create output file with empty results
-                await output_manager.write_results(
+                success = output_manager.write_results(
                     posts_data=[],
                     profile_url=profile_url,
                     output_path=output_file,
                     extraction_duration=time.time() - start_time,
                     reason="no_posts_found",
                 )
-                return True
+                return success
 
             # Extract post data
             progress.update(
@@ -179,13 +179,17 @@ async def run_extraction(
             elif len(posts_data) >= min_posts:
                 reason = "min_posts_met"
 
-            output_manager.write_results(
+            success = output_manager.write_results(
                 posts_data=posts_data,
                 profile_url=profile_url,
                 output_path=output_file,
                 extraction_duration=extraction_duration,
                 reason=reason,
             )
+
+            if not success:
+                logger.error("Failed to write output file")
+                return False
 
             progress.update(task, description="Complete!")
 
@@ -227,5 +231,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
     main()

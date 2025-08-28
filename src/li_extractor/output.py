@@ -25,7 +25,7 @@ class OutputManager:
         output_path: Path,
         extraction_duration: float | None = None,
         reason: str | None = None,
-    ) -> None:
+    ) -> bool:
         """Write extraction results to JSON file."""
         try:
             self.logger.info(
@@ -89,6 +89,7 @@ class OutputManager:
                     "file_size_bytes": output_path.stat().st_size,
                 },
             )
+            return True
 
         except Exception as e:
             self.logger.error(
@@ -97,6 +98,7 @@ class OutputManager:
                 context={"output_path": str(output_path), "error": str(e)[:500]},
                 exc_info=True,
             )
+            return False
 
     def _json_serializer(self, obj: Any) -> Any:
         """Custom JSON serializer for datetime and other objects."""

@@ -109,8 +109,9 @@ class BrowserManager:
             raise RuntimeError("Browser context is not initialized")
 
         # Set default timeouts
-        self.page.set_default_timeout(timeout)
-        self.page.set_default_navigation_timeout(timeout)
+        if self.page is not None:
+            self.page.set_default_timeout(timeout)
+            self.page.set_default_navigation_timeout(timeout)
 
         return self.page
 
@@ -122,7 +123,11 @@ class BrowserManager:
         )
 
         # Create login page
-        login_page = await self.context.new_page()
+        if self.context is not None:
+            login_page = await self.context.new_page()
+        else:
+            raise RuntimeError("Browser context is not initialized")
+
         await login_page.goto("https://www.linkedin.com/login")
 
         # Wait for user to complete login
@@ -137,12 +142,10 @@ class BrowserManager:
 
             # Save storage state
             if self.context is not None:
-                await self.context.storage_state(path=storage_state_path)
+                storage_state_path.parent.mkdir(parents=True, exist_ok=True)
+                await self.context.storage_state(path=str(storage_state_path))
             else:
                 raise RuntimeError("Browser context is not initialized")
-
-            storage_state_path.parent.mkdir(parents=True, exist_ok=True)
-            await self.context.storage_state(path=str(storage_state_path))
 
             self.logger.info(
                 "Login successful - session saved",

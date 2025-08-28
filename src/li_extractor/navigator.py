@@ -34,8 +34,7 @@ class LinkedInNavigator:
             posts_url = self._construct_posts_url(profile_url)
 
             await self.action_tracker.execute_action(
-                "navigate_to_posts_directly",
-                lambda: page.goto(posts_url, wait_until="networkidle"),
+                lambda: page.goto(profile_url, wait_until="networkidle"),
                 wait_for_network=True,
                 page=page,
             )
@@ -91,13 +90,14 @@ class LinkedInNavigator:
             for selector in activity_selectors:
                 try:
                     element = await page.wait_for_selector(selector, timeout=5000)
-                    await self.action_tracker.execute_action(
-                        "click_recent_activity",
-                        element.click,
-                        wait_for_network=True,
-                        page=page,
-                    )
-                    break
+                    if element is not None:
+                        # lambda with default parameter to bind the variable
+                        await self.action_tracker.execute_action(
+                            lambda el=element: el.click(),
+                            wait_for_network=True,
+                            page=page,
+                        )
+                        break
                 except TimeoutError:
                     continue
             else:
@@ -115,18 +115,19 @@ class LinkedInNavigator:
             for selector in posts_selectors:
                 try:
                     element = await page.wait_for_selector(selector, timeout=5000)
-                    await self.action_tracker.execute_action(
-                        "click_posts_tab",
-                        element.click,
-                        wait_for_network=True,
-                        page=page,
-                    )
+                    if element is not None:
+                        # lambda with default parameter to bind the variable
+                        await self.action_tracker.execute_action(
+                            lambda el=element: el.click(),
+                            wait_for_network=True,
+                            page=page,
+                        )
 
-                    self.logger.info(
-                        "Navigated to posts via UI",
-                        event_code=EventCodes.POSTS_TAB_OPENED,
-                    )
-                    return True
+                        self.logger.info(
+                            "Navigated to posts via UI",
+                            event_code=EventCodes.POSTS_TAB_OPENED,
+                        )
+                        return True
 
                 except TimeoutError:
                     continue
@@ -209,10 +210,8 @@ class LinkedInNavigator:
             # Scroll to load more posts
             await self._scroll_to_load_more(page)
 
-            # Wait for DOM to stabilize
             await self.action_tracker.execute_action(
-                "wait_for_dom_idle",
-                lambda: asyncio.sleep(2),  # Give time for new posts to load
+                lambda: asyncio.sleep(2),
                 min_ms=500,
                 max_ms=1000,
             )
@@ -266,7 +265,6 @@ class LinkedInNavigator:
     async def _scroll_to_load_more(self, page: Page) -> None:
         """Scroll down to trigger loading of more posts."""
         await self.action_tracker.execute_action(
-            "scroll_page_down",
             lambda: page.evaluate("window.scrollBy(0, window.innerHeight * 0.8)"),
             min_ms=200,
             max_ms=500,
@@ -284,9 +282,9 @@ class LinkedInNavigator:
             for selector in show_more_selectors:
                 element = await page.query_selector(selector)
                 if element and await element.is_visible():
+
                     await self.action_tracker.execute_action(
-                        "click_show_more",
-                        element.click,
+                        lambda el=element: el.click(),
                         wait_for_network=True,
                         page=page,
                     )
@@ -297,9 +295,9 @@ class LinkedInNavigator:
 
     async def extract_posts_data(
         self, post_elements: list[ElementHandle], page: Page
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:  # Fix: Add type parameters
         """Extract structured data from all post elements."""
-        extracted_posts = []
+        extracted_posts: list[dict[str, Any]] = []
 
         for i, post_element in enumerate(post_elements):
             try:
@@ -329,7 +327,4 @@ class LinkedInNavigator:
             context={"successful_extractions": len(extracted_posts)},
         )
 
-        return extracted_posts
-        return extracted_posts
-        return extracted_posts
         return extracted_posts
