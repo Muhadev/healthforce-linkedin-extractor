@@ -3,9 +3,9 @@
 # tests/conftest.py
 """Pytest configuration and shared fixtures."""
 
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from li_extractor.logging_ import StructuredLogger
 
@@ -36,7 +36,7 @@ def sample_post_data():
         "hashtags": ["AI", "MachineLearning"],
         "links": ["https://example.com/ai-trends"],
         "reactions_count": 42,
-        "comments_count": 5
+        "comments_count": 5,
     }
 
 
@@ -49,5 +49,5 @@ def sample_extraction_data(sample_post_data):
         "total_posts": 1,
         "posts": [sample_post_data],
         "extraction_duration_seconds": 45.5,
-        "reason": "completed"
+        "reason": "completed",
     }

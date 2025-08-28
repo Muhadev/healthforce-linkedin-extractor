@@ -26,7 +26,7 @@ lint: ## Run linters (ruff, mypy)
 	mypy src/
 
 test: ## Run tests
-	pytest tests/ -v --cov=src/li_extractor
+	PYTHONPATH=src pytest tests/ -v --cov=src/li_extractor
 
 clean: ## Clean output directory and cache
 	rm -rf out/

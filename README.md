@@ -23,7 +23,17 @@ pip install -e .[dev]
 make playwright-install
 # or manually: playwright install chromium
 ```
-#
+
+> **Note:**  
+> If you see a warning about missing Playwright system dependencies (e.g. "Host system is missing dependencies to run browsers"), run:
+> ```bash
+> sudo playwright install-deps
+> ```
+> Or manually install the required libraries:
+> ```bash
+> sudo apt-get install libnspr4 libnss3 libasound2
+> ```
+
 ### 2. First Run (Interactive Login)
 
 ```bash
