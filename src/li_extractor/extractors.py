@@ -48,7 +48,7 @@ class PostExtractor:
             # Extract author name
             post_data["author_name"] = await self._extract_author_name(post_element)
 
-            # Extract timestamp
+            # Extract timestampf
             post_data["posted_at"] = await self._extract_timestamp(post_element)
 
             # Extract post text
