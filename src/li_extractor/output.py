@@ -63,16 +63,18 @@ class OutputManager:
             extraction_result = LinkedInPostsExtraction(
                 profile_url=profile_url,
                 fetched_at=datetime.now(timezone.utc),
-                total_posts=len(validated_posts),
+                total_posts=len(
+                    validated_posts
+                ),  # This will be synced by the validator
                 posts=validated_posts,
                 extraction_duration_seconds=extraction_duration,
                 reason=reason,
             )
 
-            # Write to file
+            # Write to file using Pydantic V2 method
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(
-                    extraction_result.dict(),
+                    extraction_result.model_dump(),
                     f,
                     indent=2,
                     ensure_ascii=False,
@@ -126,7 +128,4 @@ class OutputManager:
                 context={"schema_path": str(schema_path)},
                 exc_info=True,
             )
-            # return False
-            #     exc_info=True,
-            # )
             return False

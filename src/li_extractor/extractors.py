@@ -2,6 +2,7 @@
 """DOM extraction utilities for LinkedIn posts."""
 
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -18,9 +19,9 @@ class PostExtractor:
         self.logger = logger
         self.time_parser = TimeParser()
 
-        # Regex for hashtag extraction (Unicode-aware)
-        # self.hashtag_pattern = re.compile(r"(?i)(?<!\w)#([\p{L}0-9_]+)", re.UNICODE)
-        self.hashtag_pattern = re.compile(r"(?i)(?<!\w)#([A-Za-z0-9_]+)", re.UNICODE)
+        # Improved regex for hashtag extraction (Unicode-aware)
+        # This pattern properly handles Unicode word characters
+        self.hashtag_pattern = re.compile(r"(?i)(?<!\w)#(\w+)", re.UNICODE)
 
         # Regex for count parsing (handles various formats)
         self.count_pattern = re.compile(r"(\d+(?:,\d+)*)", re.UNICODE)
@@ -215,9 +216,17 @@ class PostExtractor:
         if not text:
             return []
 
-        hashtags = self.hashtag_pattern.findall(text)
-        # Normalize to lowercase and deduplicate
-        return sorted({tag.lower() for tag in hashtags if tag})
+        # Use improved Unicode-aware regex
+        hashtags = []
+        for match in self.hashtag_pattern.finditer(text):
+            hashtag = match.group(1)
+            if hashtag:
+                # Normalize Unicode characters and convert to lowercase
+                normalized = unicodedata.normalize("NFKC", hashtag.lower())
+                hashtags.append(normalized)
+
+        # Remove duplicates and sort
+        return sorted(set(hashtags))
 
     async def _extract_links(
         self, post_element: ElementHandle, base_url: str
@@ -375,5 +384,3 @@ class PostExtractor:
             return int(count_str.replace(",", ""))
         except (ValueError, AttributeError):
             return 0
-        # except (ValueError, AttributeError):
-        #     return 0

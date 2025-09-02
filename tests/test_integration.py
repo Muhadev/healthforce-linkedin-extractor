@@ -20,11 +20,30 @@ async def test_full_extraction_workflow(temp_output_dir, sample_extraction_data)
 
     # Configure mocks
     mock_page = AsyncMock()
-    mock_browser_manager.start_browser.return_value = mock_page
-    mock_navigator.navigate_to_posts.return_value = True
-    mock_navigator.load_posts.return_value = [MagicMock()]  # Mock post elements
-    mock_navigator.extract_posts_data.return_value = sample_extraction_data["posts"]
-    mock_output_manager.write_results.return_value = True
+    mock_browser_manager.start_browser = AsyncMock(return_value=mock_page)
+    mock_browser_manager.close = AsyncMock()
+
+    # Configure navigator mocks
+    mock_navigator.navigate_to_posts = AsyncMock(return_value=True)
+    mock_navigator.load_posts = AsyncMock(
+        return_value=[MagicMock()]
+    )  # Mock post elements
+    mock_navigator.extract_posts_data = AsyncMock(
+        return_value=sample_extraction_data["posts"]
+    )
+
+    # Mock action_tracker to avoid the coroutine warning
+    mock_action_tracker = MagicMock()
+    mock_action_tracker.get_metrics = MagicMock(
+        return_value={
+            "actions_performed": 5,
+            "average_action_duration_ms": 100.0,
+            "scrolls_performed": 3,
+        }
+    )
+    mock_navigator.action_tracker = mock_action_tracker
+
+    mock_output_manager.write_results = MagicMock(return_value=True)
 
     # Patch the classes
     with (
@@ -63,7 +82,8 @@ async def test_extraction_with_navigation_failure(temp_output_dir):
     mock_logger = MagicMock()
 
     # Configure navigation to fail
-    mock_navigator.navigate_to_posts.return_value = False
+    mock_navigator.navigate_to_posts = AsyncMock(return_value=False)
+    mock_browser_manager.close = AsyncMock()
 
     with (
         patch("li_extractor.cli.BrowserManager", return_value=mock_browser_manager),
@@ -93,9 +113,10 @@ async def test_extraction_with_no_posts(temp_output_dir):
     mock_logger = MagicMock()
 
     # Configure to find no posts
-    mock_navigator.navigate_to_posts.return_value = True
-    mock_navigator.load_posts.return_value = []
-    mock_output_manager.write_results.return_value = True
+    mock_browser_manager.close = AsyncMock()
+    mock_navigator.navigate_to_posts = AsyncMock(return_value=True)
+    mock_navigator.load_posts = AsyncMock(return_value=[])
+    mock_output_manager.write_results = MagicMock(return_value=True)
 
     with (
         patch("li_extractor.cli.BrowserManager", return_value=mock_browser_manager),
@@ -117,7 +138,5 @@ async def test_extraction_with_no_posts(temp_output_dir):
 
     # Verify empty results were written
     call_args = mock_output_manager.write_results.call_args
-    assert call_args[1]["posts_data"] == []
-    assert call_args[1]["reason"] == "no_posts_found"
     assert call_args[1]["posts_data"] == []
     assert call_args[1]["reason"] == "no_posts_found"

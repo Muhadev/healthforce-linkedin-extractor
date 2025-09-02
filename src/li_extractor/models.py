@@ -4,7 +4,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class LinkedInPost(BaseModel):
@@ -19,7 +19,8 @@ class LinkedInPost(BaseModel):
     reactions_count: int | None = Field(None, ge=0, description="Number of reactions")
     comments_count: int | None = Field(None, ge=0, description="Number of comments")
 
-    @validator("hashtags", pre=True)
+    @field_validator("hashtags", mode="before")
+    @classmethod
     def normalize_hashtags(cls, v: Any) -> list[str]:
         """Normalize hashtags to lowercase unique list."""
         if not v:
@@ -28,7 +29,8 @@ class LinkedInPost(BaseModel):
             v = [v]
         return sorted({tag.lower().strip("#") for tag in v if tag})
 
-    @validator("links", pre=True)
+    @field_validator("links", mode="before")
+    @classmethod
     def validate_links(cls, v: Any) -> list[str]:
         """Validate and deduplicate links."""
         if not v:
@@ -64,16 +66,19 @@ class LinkedInPostsExtraction(BaseModel):
         None, description="Reason for stopping (timeout, min_met, etc.)"
     )
 
-    @validator("total_posts", always=True)
-    def sync_total_posts(cls, v: int, values: dict[str, Any]) -> int:
+    @model_validator(mode="after")
+    def sync_total_posts(self) -> "LinkedInPostsExtraction":
         """Ensure total_posts matches actual posts count."""
-        posts = values.get("posts", [])
-        return len(posts) if posts else v
+        self.total_posts = len(self.posts)
+        return self
 
     @classmethod
     def get_json_schema(cls) -> dict[str, Any]:
-        """Get JSON Schema for the model."""
-        return cls.schema()
+        """Get JSON Schema for the model with proper $schema field."""
+        schema = cls.model_json_schema()
+        # Add the $schema field for proper JSON Schema format
+        schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        return schema
 
 
 class ExtractionMetrics(BaseModel):

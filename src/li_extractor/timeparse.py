@@ -24,14 +24,14 @@ class TimeParser:
         "weeks_word": re.compile(r"(\d+)\s+weeks?\s+ago", re.IGNORECASE),
     }
 
-    @classmethod
     def parse_relative_time(
-        cls, time_str: str, reference_time: datetime | None = None
+        self, time_str: str, reference_time: datetime | None = None
     ) -> datetime | None:
         """Parse relative time string to UTC datetime."""
         if not time_str:
             return None
 
+        # Use provided reference_time or current UTC time
         if reference_time is None:
             reference_time = datetime.now(timezone.utc)
 
@@ -53,30 +53,30 @@ class TimeParser:
         except (ValueError, TypeError):
             pass
 
-        # Parse relative times
-        if cls.PATTERNS["just_now"].search(time_str):
+        # Parse relative times using the reference_time
+        if self.PATTERNS["just_now"].search(time_str):
             return reference_time
 
         # Seconds
-        match = cls.PATTERNS["seconds"].search(time_str)
+        match = self.PATTERNS["seconds"].search(time_str)
         if match:
             seconds = int(match.group(1))
             return reference_time - timedelta(seconds=seconds)
 
         # Minutes
-        match = cls.PATTERNS["minutes"].search(time_str)
+        match = self.PATTERNS["minutes"].search(time_str)
         if match:
             minutes = int(match.group(1))
             return reference_time - timedelta(minutes=minutes)
 
         # Hours
-        match = cls.PATTERNS["hours"].search(time_str)
+        match = self.PATTERNS["hours"].search(time_str)
         if match:
             hours = int(match.group(1))
             return reference_time - timedelta(hours=hours)
 
         # Days
-        match = cls.PATTERNS["days"].search(time_str) or cls.PATTERNS[
+        match = self.PATTERNS["days"].search(time_str) or self.PATTERNS[
             "days_word"
         ].search(time_str)
         if match:
@@ -84,7 +84,7 @@ class TimeParser:
             return reference_time - timedelta(days=days)
 
         # Weeks
-        match = cls.PATTERNS["weeks"].search(time_str) or cls.PATTERNS[
+        match = self.PATTERNS["weeks"].search(time_str) or self.PATTERNS[
             "weeks_word"
         ].search(time_str)
         if match:
@@ -92,16 +92,15 @@ class TimeParser:
             return reference_time - timedelta(weeks=weeks)
 
         # Months (approximate as 30 days)
-        match = cls.PATTERNS["months"].search(time_str)
+        match = self.PATTERNS["months"].search(time_str)
         if match:
             months = int(match.group(1))
             return reference_time - timedelta(days=months * 30)
 
         # Years (approximate as 365 days)
-        match = cls.PATTERNS["years"].search(time_str)
+        match = self.PATTERNS["years"].search(time_str)
         if match:
             years = int(match.group(1))
             return reference_time - timedelta(days=years * 365)
 
         return None
-        # return None
