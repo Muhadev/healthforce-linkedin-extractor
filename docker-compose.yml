@@ -8,7 +8,7 @@ services:
       - ./out:/app/out
       - ./config:/app/config:ro
     environment:
-      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/juansebastianmd/}
+      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/fayemi-muhammed/}
       - MIN_POSTS=${MIN_POSTS:-10}
       - MAX_SECONDS=${MAX_SECONDS:-60}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -27,7 +27,7 @@ services:
       - .:/app
       - /app/src/li_extractor/__pycache__
     environment:
-      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/juansebastianmd/}
+      - PROFILE_URL=${PROFILE_URL:-https://www.linkedin.com/in/fayemi-muhammed/}
     ports:
       - "9222:9222"  # Chrome DevTools
     command: >

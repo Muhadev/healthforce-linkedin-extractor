@@ -44,7 +44,7 @@ class TestLinkedInNavigationE2E:
 
         storage_path = tmp_path / "storage.json"
         test_profile = os.getenv(
-            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/juansebastianmd/"
+            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
         try:
@@ -77,7 +77,7 @@ class TestLinkedInNavigationE2E:
 
         storage_path = tmp_path / "storage.json"
         test_profile = os.getenv(
-            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/juansebastianmd/"
+            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
         try:
@@ -107,7 +107,7 @@ class TestLinkedInNavigationE2E:
 
         storage_path = tmp_path / "storage.json"
         test_profile = os.getenv(
-            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/juansebastianmd/"
+            "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
         try:
@@ -117,7 +117,9 @@ class TestLinkedInNavigationE2E:
             )
 
             # Navigate and load posts
-            await navigator.navigate_to_posts(page, test_profile)
+            nav_success = await navigator.navigate_to_posts(page, test_profile)
+            assert nav_success, "Navigation should succeed"
+
             post_elements = await navigator.load_posts(
                 page, min_posts=2, max_seconds=15
             )
@@ -147,6 +149,8 @@ class TestLinkedInNavigationE2E:
                     ]
                     for field in required_fields:
                         assert field in post, f"Missing field '{field}' in post {i+1}"
+            else:
+                pytest.skip("No posts found to extract data from")
 
         finally:
             await browser_manager.close()

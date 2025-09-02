@@ -3,7 +3,7 @@
 
 PYTHON := python3
 PIP := pip3
-PROFILE_URL ?= https://www.linkedin.com/in/juansebastianmd/
+PROFILE_URL ?= https://www.linkedin.com/in/fayemi-muhammed/
 MIN_POSTS ?= 10
 MAX_SECONDS ?= 60
 
@@ -29,8 +29,24 @@ lint-fix: ## Run linters and fix auto-fixable issues
 	ruff check --fix src/ tests/
 	mypy src/
 
-test: ## Run tests
-	PYTHONPATH=src pytest tests/ -v --cov=src/li_extractor
+test: ## Run unit tests only (skip E2E)
+	PYTHONPATH=src pytest tests/ -v --cov=src/li_extractor -m "not e2e"
+
+test-unit: ## Run unit tests only (explicit)
+	PYTHONPATH=src pytest tests/ -v --cov=src/li_extractor -m "not e2e"
+
+test-e2e: ## Run end-to-end tests (requires LinkedIn access)
+	@echo "Running E2E tests - may require manual LinkedIn login..."
+	@echo "Set E2E_HEADLESS=true for headless mode"
+	@echo "Set TEST_LINKEDIN_PROFILE=<url> for custom profile"
+	RUN_E2E_TESTS=true PYTHONPATH=src pytest tests/e2e/ -v -m e2e --tb=short
+
+test-all: ## Run all tests including E2E
+	@echo "Running unit tests first..."
+	@make test-unit
+	@echo ""
+	@echo "Running E2E tests..."
+	@make test-e2e
 
 clean: ## Clean output directory and cache
 	rm -rf out/
@@ -47,3 +63,9 @@ run: ## Run the extractor (use PROFILE_URL= to override)
 		--headful
 
 all: fmt lint test ## Run all checks
+
+setup: install playwright-install ## Complete setup for development
+	@echo "Setup complete! You can now run:"
+	@echo "  make test       # Run unit tests"
+	@echo "  make test-e2e   # Run E2E tests (requires LinkedIn)"
+	@echo "  make run        # Run extractor"

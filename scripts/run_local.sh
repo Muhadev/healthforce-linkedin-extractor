@@ -5,7 +5,7 @@
 set -e
 
 # Default values
-PROFILE_URL=${PROFILE_URL:-"https://www.linkedin.com/in/juansebastianmd/"}
+PROFILE_URL=${PROFILE_URL:-"https://www.linkedin.com/in/fayemi-muhammed/"}
 MIN_POSTS=${MIN_POSTS:-10}
 MAX_SECONDS=${MAX_SECONDS:-60}
 OUT_DIR=${OUT_DIR:-"out"}
