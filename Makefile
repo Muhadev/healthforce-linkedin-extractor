@@ -25,6 +25,10 @@ lint: ## Run linters (ruff, mypy)
 	ruff check src/ tests/
 	mypy src/
 
+lint-fix: ## Run linters and fix auto-fixable issues
+	ruff check --fix src/ tests/
+	mypy src/
+
 test: ## Run tests
 	PYTHONPATH=src pytest tests/ -v --cov=src/li_extractor
 

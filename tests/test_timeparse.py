@@ -153,14 +153,31 @@ class TestTimeParser:
         assert result is not None
         assert result.tzinfo == timezone.utc
 
-        # Test with different timezone reference
-        import pytz
-
-        est = pytz.timezone("US/Eastern")
-        est_ref = datetime(2025, 8, 27, 8, 0, 0, tzinfo=est)
+        # Test with different timezone reference using datetime.timezone
+        # Create a timezone offset instead of using pytz
+        est_offset = timezone(timedelta(hours=-5))  # EST is UTC-5
+        est_ref = datetime(2025, 8, 27, 8, 0, 0, tzinfo=est_offset)
         result = self.parser.parse_relative_time("2h", est_ref)
 
         assert result is not None
         assert result.tzinfo == timezone.utc
+
+    def test_no_reference_time(self):
+        """Test parsing without reference time (uses current time)."""
+        # Capture the time before parsing to avoid timing issues
+        before_time = datetime.now(timezone.utc)
+        result = self.parser.parse_relative_time("1h")
+        after_time = datetime.now(timezone.utc)
+
         assert result is not None
         assert result.tzinfo == timezone.utc
+
+        # The result should be approximately 1 hour before the current time
+        # Allow some tolerance for execution time (within 2 seconds)
+        expected_earliest = before_time - timedelta(hours=1, seconds=2)
+        expected_latest = after_time - timedelta(hours=1)
+
+        assert expected_earliest <= result <= expected_latest, (
+            f"Expected result between {expected_earliest} and {expected_latest}, "
+            f"but got {result}"
+        )
