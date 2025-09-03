@@ -47,25 +47,37 @@ class TestLinkedInNavigationE2E:
             "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
+        # Determine if running headless (default to headful for E2E tests for debugging)
+        is_headless = os.getenv("E2E_HEADLESS", "false").lower() == "true"
+        print(f"Running E2E test with headless={is_headless}")
+
         try:
             # Start browser (will require manual login if no session)
+            print("Starting browser for E2E test...")
             page = await browser_manager.start_browser(
                 storage_state_path=storage_path,
-                headless=os.getenv("E2E_HEADLESS", "false").lower() == "true",
+                headless=is_headless,
                 timeout=30000,
             )
 
+            print(f"Browser started successfully! Current URL: {page.url}")
+
             # Test navigation
+            print("Testing navigation to posts...")
             success = await navigator.navigate_to_posts(page, test_profile)
             assert success, "Should successfully navigate to posts section"
 
             # Verify we're on the right page
             current_url = page.url
+            print(f"Navigation successful! Final URL: {current_url}")
             assert any(
                 keyword in current_url
                 for keyword in ["recent-activity", "posts", "activity"]
             ), f"Expected to be on posts page, but got: {current_url}"
 
+        except Exception as e:
+            print(f"E2E test failed with error: {e}")
+            raise
         finally:
             await browser_manager.close()
 
@@ -80,10 +92,12 @@ class TestLinkedInNavigationE2E:
             "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
+        is_headless = os.getenv("E2E_HEADLESS", "false").lower() == "true"
+
         try:
             page = await browser_manager.start_browser(
                 storage_state_path=storage_path,
-                headless=os.getenv("E2E_HEADLESS", "false").lower() == "true",
+                headless=is_headless,
             )
 
             # Navigate to posts
@@ -110,10 +124,12 @@ class TestLinkedInNavigationE2E:
             "TEST_LINKEDIN_PROFILE", "https://www.linkedin.com/in/fayemi-muhammed/"
         )
 
+        is_headless = os.getenv("E2E_HEADLESS", "false").lower() == "true"
+
         try:
             page = await browser_manager.start_browser(
                 storage_state_path=storage_path,
-                headless=os.getenv("E2E_HEADLESS", "false").lower() == "true",
+                headless=is_headless,
             )
 
             # Navigate and load posts

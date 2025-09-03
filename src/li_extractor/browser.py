@@ -1,6 +1,7 @@
 # src/li_extractor/browser.py
 """Playwright browser management with session persistence."""
 
+import asyncio
 from pathlib import Path
 
 from playwright.async_api import (
@@ -8,6 +9,7 @@ from playwright.async_api import (
     BrowserContext,
     Page,
     Playwright,
+    TimeoutError,
     async_playwright,
 )
 
@@ -134,11 +136,11 @@ class BrowserManager:
         self.logger.info("Please complete LinkedIn login in the browser window...")
 
         try:
-            # Wait for successful login (presence of feed or profile navigation)
-            await login_page.wait_for_selector(
-                'nav[aria-label="Primary Navigation"], .global-nav__me, #global-nav',
-                timeout=300000,  # 5 minutes
-            )
+            # Use a more flexible detection approach
+            login_successful = await self._detect_successful_login(login_page)
+
+            if not login_successful:
+                raise TimeoutError("Could not detect successful login with any method")
 
             # Save storage state
             if self.context is not None:
@@ -163,6 +165,107 @@ class BrowserManager:
         finally:
             await login_page.close()
 
+    async def _detect_successful_login(self, page: Page) -> bool:
+        """Detect successful login using multiple strategies."""
+        max_wait_time = 300  # 5 minutes total
+        check_interval = 5  # Check every 5 seconds
+
+        for attempt in range(max_wait_time // check_interval):
+            self.logger.debug(
+                f"Login detection attempt {attempt + 1}",
+                context={"current_url": page.url},
+            )
+
+            # Strategy 1: Check URL patterns
+            current_url = page.url
+            success_url_patterns = [
+                "/feed",
+                "/in/",
+                "linkedin.com/?",
+                "linkedin.com/home",
+                "linkedin.com/mynetwork",
+            ]
+
+            # If we're no longer on login page, it's likely successful
+            if "/login" not in current_url:
+                for pattern in success_url_patterns:
+                    if pattern in current_url:
+                        self.logger.info(
+                            "Login detected via URL pattern",
+                            context={"url": current_url, "pattern": pattern},
+                        )
+                        # Wait a bit more for page to stabilize
+                        await asyncio.sleep(2)
+                        return True
+
+            # Strategy 2: Try DOM selectors (with short timeout)
+            selectors_to_try = [
+                # Modern LinkedIn selectors
+                '[data-test-id="nav-header"]',
+                'nav[class*="global-nav"]',
+                ".global-nav",
+                ".application-outlet",
+                # Legacy selectors
+                'nav[aria-label="Primary Navigation"]',
+                ".global-nav__me",
+                "#global-nav",
+                # Feed-specific selectors
+                ".feed-identity-module",
+                ".scaffold-layout__content",
+                ".core-rail",
+            ]
+
+            for selector in selectors_to_try:
+                try:
+                    element = await page.query_selector(selector)
+                    if element and await element.is_visible():
+                        self.logger.info(
+                            f"Login detected using selector: {selector}",
+                            context={"selector": selector, "url": current_url},
+                        )
+                        # Wait a bit more for page to stabilize
+                        await asyncio.sleep(2)
+                        return True
+                except Exception:
+                    continue
+
+            # Strategy 3: Check page title
+            try:
+                title = await page.title()
+                if title and "Sign In" not in title and "LinkedIn" in title:
+                    # If title changed from login page and contains LinkedIn
+                    if any(
+                        word in title.lower() for word in ["feed", "home", "linkedin"]
+                    ):
+                        self.logger.info(
+                            "Login detected via page title", context={"title": title}
+                        )
+                        await asyncio.sleep(2)
+                        return True
+            except Exception:
+                pass
+
+            # Strategy 4: Check for absence of login form
+            try:
+                login_form = await page.query_selector(
+                    'form[class*="login"], #login-form, [data-test-id="sign-in-form"]'
+                )
+                if not login_form:
+                    # If login form is gone, user likely logged in
+                    self.logger.info(
+                        "Login detected via absence of login form",
+                        context={"url": current_url},
+                    )
+                    await asyncio.sleep(2)
+                    return True
+            except Exception:
+                pass
+
+            # Wait before next attempt
+            await asyncio.sleep(check_interval)
+
+        return False
+
     async def close(self) -> None:
         """Clean up browser resources."""
         if self.page:
@@ -172,6 +275,4 @@ class BrowserManager:
         if self.browser:
             await self.browser.close()
         if self.playwright:
-            await self.playwright.stop()
-            await self.playwright.stop()
             await self.playwright.stop()
