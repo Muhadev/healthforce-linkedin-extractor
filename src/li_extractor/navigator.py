@@ -239,6 +239,196 @@ class LinkedInNavigator:
             )
             return False
 
+    async def _debug_available_links(self, page: Page) -> None:
+        """Debug function to log what links are actually available on the page."""
+        try:
+            self.logger.info("=== DEBUG: Analyzing page content ===")
+
+            # Check page basic info
+            current_url = page.url
+            self.logger.info(f"Current URL: {current_url}")
+
+            # Find all links that might be activity-related
+            all_links = await page.query_selector_all("a[href]")
+            self.logger.info(f"Total links found on page: {len(all_links)}")
+
+            activity_links = []
+            show_links = []
+
+            for i, link in enumerate(all_links[:30]):  # Check first 30 links
+                try:
+                    href = await link.get_attribute("href")
+                    text = await link.inner_text()
+                    is_visible = await link.is_visible()
+
+                    if href and text:
+                        text_clean = text.strip()[:50]  # Limit text length
+
+                        # Check for activity-related links
+                        if "activity" in href.lower():
+                            activity_links.append(
+                                f"[{i}] Activity: '{text_clean}' | {href} | Visible: {is_visible}"
+                            )
+
+                        # Check for "show" related links
+                        if "show" in text.lower() or "see" in text.lower():
+                            show_links.append(
+                                f"[{i}] Show/See: '{text_clean}' | {href} | Visible: {is_visible}"
+                            )
+
+                except Exception:
+                    continue
+
+            if activity_links:
+                self.logger.info("=== ACTIVITY LINKS FOUND ===")
+                for link_info in activity_links[:5]:  # Log first 5
+                    self.logger.info(f"  {link_info}")
+            else:
+                self.logger.info("=== NO ACTIVITY LINKS FOUND ===")
+
+            if show_links:
+                self.logger.info("=== SHOW/SEE LINKS FOUND ===")
+                for link_info in show_links[:5]:  # Log first 5
+                    self.logger.info(f"  {link_info}")
+            else:
+                self.logger.info("=== NO SHOW/SEE LINKS FOUND ===")
+
+            # Also check for buttons that might trigger activity
+            buttons = await page.query_selector_all("button")
+            self.logger.info(f"Total buttons found on page: {len(buttons)}")
+
+            activity_buttons = []
+
+            for i, button in enumerate(buttons[:20]):  # Check first 20 buttons
+                try:
+                    text = await button.inner_text()
+                    is_visible = await button.is_visible()
+                    aria_label = await button.get_attribute("aria-label")
+
+                    if text and (
+                        "show" in text.lower()
+                        or "all" in text.lower()
+                        or "activity" in text.lower()
+                    ):
+                        text_clean = text.strip()[:30]
+                        aria_info = f" | aria: {aria_label}" if aria_label else ""
+                        activity_buttons.append(
+                            f"[{i}] Button: '{text_clean}' | Visible: {is_visible}{aria_info}"
+                        )
+
+                except Exception:
+                    continue
+
+            if activity_buttons:
+                self.logger.info("=== ACTIVITY BUTTONS FOUND ===")
+                for button_info in activity_buttons[:5]:  # Log first 5
+                    self.logger.info(f"  {button_info}")
+            else:
+                self.logger.info("=== NO ACTIVITY BUTTONS FOUND ===")
+
+            # Check what sections exist on the page
+            sections = await page.query_selector_all(
+                'section, [class*="section"], [class*="activity"]'
+            )
+            self.logger.info(f"Total sections found: {len(sections)}")
+
+            section_info = []
+            for i, section in enumerate(sections[:10]):
+                try:
+                    class_name = await section.get_attribute("class")
+                    if class_name and (
+                        "activity" in class_name.lower()
+                        or "recent" in class_name.lower()
+                    ):
+                        section_info.append(f"[{i}] Section class: {class_name[:100]}")
+                except Exception:
+                    continue
+
+            if section_info:
+                self.logger.info("=== RELEVANT SECTIONS FOUND ===")
+                for info in section_info:
+                    self.logger.info(f"  {info}")
+
+            self.logger.info("=== END DEBUG INFO ===")
+
+        except Exception as e:
+            self.logger.error(f"Debug links analysis failed: {e}")
+            import traceback
+
+            self.logger.error(f"Debug traceback: {traceback.format_exc()}")
+
+    async def _check_for_posts_on_current_page(self, page: Page) -> bool:
+        """Check if there are posts visible on current page without navigation."""
+        try:
+            # Look for posts directly on the profile page
+            post_indicators = [
+                ".pv-recent-activity-section",
+                ".pv-profile-section__card-item",
+                ".pvs-list__item",
+                '[data-test-id="post"]',
+                ".feed-shared-update-v2",
+                ".artdeco-card",
+            ]
+
+            for selector in post_indicators:
+                elements = await page.query_selector_all(selector)
+                if elements and len(elements) > 0:
+                    self.logger.info(
+                        f"Found {len(elements)} potential posts with selector: {selector}"
+                    )
+                    return True
+
+            return False
+        except Exception:
+            return False
+
+    async def _try_inline_posts_extraction(self, page: Page) -> bool:
+        """Try to extract posts from current page if activity navigation failed."""
+        try:
+            self.logger.info("Attempting inline posts extraction from current page")
+
+            # Scroll down to see if more content loads
+            for _ in range(3):
+                await page.evaluate("window.scrollBy(0, window.innerHeight)")
+                await asyncio.sleep(2)
+
+            # Check if we can find posts now
+            if await self._check_for_posts_on_current_page(page):
+                self.logger.info("Found posts after scrolling - using current page")
+                return True
+
+            # Last resort: try going to the posts URL manually constructed from profile URL
+            current_url = page.url
+            if "/in/" in current_url:
+                # Extract profile handle from URL
+                profile_handle = current_url.split("/in/")[1].rstrip("/")
+                posts_url = f"https://www.linkedin.com/in/{profile_handle}/recent-activity/posts/"
+
+                self.logger.info(
+                    f"Last resort: trying constructed posts URL: {posts_url}"
+                )
+
+                # Try with different wait strategies for last resort navigation
+                try:
+                    await page.goto(
+                        posts_url, wait_until="domcontentloaded", timeout=10000
+                    )
+                except Exception:
+                    try:
+                        await page.goto(posts_url, wait_until="load", timeout=8000)
+                    except Exception as e:
+                        self.logger.warning(f"Last resort navigation failed: {e}")
+                        return False
+
+                await asyncio.sleep(3)
+                return await self._verify_posts_page(page)
+
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Inline posts extraction failed: {e}")
+            return False
+
     async def load_posts(
         self, page: Page, min_posts: int = 10, max_seconds: int = 60
     ) -> list[ElementHandle]:
@@ -388,12 +578,12 @@ class LinkedInNavigator:
             for selector in show_more_selectors:
                 element = await page.query_selector(selector)
                 if element and await element.is_visible():
-                    await self.action_tracker.execute_action(
-                        lambda el=element: el.click(),
-                        wait_for_network=True,
-                        page=page,
-                    )
-                    break
+                    try:
+                        await element.click()
+                        await page.wait_for_load_state("networkidle", timeout=5000)
+                        break
+                    except Exception:
+                        continue
         except Exception:
             # Show more button is optional
             pass

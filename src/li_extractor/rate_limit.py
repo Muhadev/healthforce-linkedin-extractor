@@ -31,14 +31,19 @@ class ActionTracker:
     ) -> Any:
         """Execute action with timing and rate limiting."""
         start_time = time.time()
+        action_name = getattr(action, "__name__", "unknown_action")
 
         try:
             # Execute the action
-            result = (
-                await action()
-                if asyncio.iscoroutinefunction(action)
-                else await action()
-            )
+            if asyncio.iscoroutinefunction(action):
+                result = await action()
+            else:
+                # Handle both sync and async callables
+                try:
+                    result = await action()
+                except TypeError:
+                    # If it's not awaitable, call it directly
+                    result = action()
 
             # Wait for network idle if requested
             if wait_for_network and page:
@@ -62,38 +67,30 @@ class ActionTracker:
             if len(self.action_times) > 10:
                 self.action_times.pop(0)
 
-            # avg_duration = sum(self.action_times) / len(self.action_times)
-
-            # self.logger.debug(
-            #     f"Action completed: {action.__name__}",
-            #     metrics={
-            #         "action_name": action.__name__,
-            #         "duration_ms": duration * 1000,
-            #         "jitter_ms": jitter_ms,
-            #         "avg_duration_ms": avg_duration * 1000,
-            #         "total_actions": self.total_actions,
-            #     },
-            # )
+            self.logger.debug(
+                f"Action completed: {action_name}",
+                context={
+                    "action_name": action_name,
+                    "duration_ms": duration * 1000,
+                    "jitter_ms": jitter_ms,
+                    "total_actions": self.total_actions,
+                },
+            )
 
             return result
-        except Exception:
+
+        except Exception as e:
+            duration = time.time() - start_time
             self.logger.error(
-                f"Action failed: {getattr(action, '__name__', 'unknown')}"
+                f"Action failed: {action_name}",
+                context={
+                    "action_name": action_name,
+                    "duration_ms": duration * 1000,
+                    "error": str(e)[:200],
+                },
+                exc_info=True,
             )
             raise
-
-        # except Exception as e:
-        #     duration = time.time() - start_time
-        #     self.logger.error(
-        #         f"Action failed: {action.__name__}",
-        #         context={
-        #             "action_name": action.__name__,
-        #             "duration_ms": duration * 1000,
-        #             "error": str(e),
-        #         },
-        #         exc_info=True,
-        #     )
-        #     raise
 
     def get_metrics(self) -> dict[str, float]:
         """Get current action metrics."""
